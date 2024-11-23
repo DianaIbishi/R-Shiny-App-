@@ -69,6 +69,11 @@ library(dplyr)
 library(purrr)
 
 # Setup Open-Meteo API request details
+# keine list, sondern tibble erstellen
+# leaflet für interaktive maps
+# ggmap
+
+
 url <- "https://archive-api.open-meteo.com/v1/archive"
 params <- list(
   latitude =  42.6629,
