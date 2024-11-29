@@ -4,73 +4,26 @@
 
 
 
-# Examples for shiny ------------------------------------------------------
-
-
-
-library(shiny)
-
-# Define UI for application that draws a histogram
-ui <- fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-           plotOutput("distPlot")
-        )
-    )
-)
-
-# Define server logic required to draw a histogram
-server <- function(input, output) {
-
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white',
-             xlab = 'Waiting time to next eruption (in mins)',
-             main = 'Histogram of waiting times')
-    })
-}
-
-# Run the application 
-shinyApp(ui = ui, server = server)
-
-
-
-
-# Load Data ---------------------------------------------------------------
+# Load Packages ---------------------------------------------------------------
 
 library(httr)
 library(jsonlite)
 library(lubridate)
 library(dplyr)
 library(purrr)
+library(tibble)
+library(tidyr)
 
-# Setup Open-Meteo API request details
-# keine list, sondern tibble erstellen
+
 # leaflet für interaktive maps
 # ggmap
 
+# Prepare the data ------------------------------------------------------------
+
 
 url <- "https://archive-api.open-meteo.com/v1/archive"
-params <- list(
-  latitude =  42.6629,
+
+latitude <- c(42.6629,
               42.2159,
               42.6530,
               42.8853,
@@ -86,9 +39,9 @@ params <- list(
               42.5631,
               42.6244,
               42.7736,
-              42.5958,
+              42.5958)
   
-  longitude = 21.1655,
+longitude <- c(21.1655,
               20.7420,
               20.2883,
               20.8675,
@@ -104,75 +57,96 @@ params <- list(
               21.1408,
               21.4672,
               20.7561,
-              21.4011, 
+              21.4011)
 
-  start_date = "2023-01-01",  # I actually wanted the data from 2000 until 2023.
-  end_date = "2023-12-31",    # I exceeded the API calls that's why it did not work
+start_date <- "2023-01-01"  # I actually wanted the data from 2000 until 2023.
+end_date <- "2023-12-31"    # I exceeded the API calls that's why it did not work
                               # I have shortened the timeframe
-  daily = "snowfall_sum",
+daily <- c("snowfall_sum",
           "rain_sum",
-          "temperature_2m_max"
+          "temperature_2m_max")
+
+# Now I create a tibble of my values
+
+params_tibble <- tibble(
+  latitude = latitude,
+  longitude = longitude,
+  start_date = start_date,
+  end_date = end_date,
+  daily = list(daily)  # Store daily parameters as a list-column
 )
 
 
+# API request 
+
+api_responses <- params_tibble %>%
+  rowwise() %>%
+  mutate(
+    response = list(
+      GET(
+        url,
+        query = list(
+          latitude = latitude,
+          longitude = longitude,
+          start_date = start_date,
+          end_date = end_date,
+          daily = paste(daily, collapse = ",")
+        )
+      )
+    )
+  ) %>%
+  ungroup()
+
+# With this code I could check the first values of the API response
+# it seemed that is worked
+content(api_responses$response[[1]])
 
 
-# Function to make the API request with retries
-make_request <- function(url, params, retries = 5, backoff_factor = 0.2) {
-  attempt <- 1
-  repeat {
-    response <- tryCatch({
-      httr::GET(url, query = params)
-    }, error = function(e) {
-      NULL
+# Here I got response and daily_data in my params_tibble
+# daily_data represents every date from January 2023 until December 2023 for 
+# every longitude and latitude
+
+params_tibble <- api_responses %>%
+  mutate(
+    daily_data = map(response, ~ {
+      if (inherits(.x, "response") && status_code(.x) == 200) {
+        content(.x)$daily  # Extract the "daily" section
+      } else {
+        NULL  # Handle failed requests
+      }
     })
-    
-    if (!is.null(response) && status_code(response) == 200) {
-      return(content(response, as = "parsed", simplifyDataFrame = TRUE))
-    }
-    
-    if (attempt >= retries) {
-      stop("API request failed after ", retries, " attempts.")
-    }
-    
-    Sys.sleep(backoff_factor * attempt)
-    attempt <- attempt + 1
-  }
-}
-
-# Fetch weather data
-response <- make_request(url, params)
+  )
 
 
-# Extract relevant metadata
-coordinates <- paste0(response$latitude, "°N ", response$longitude, "°E")
-elevation <- response$elevation
-timezone <- response$timezone
-timezone_abbreviation <- response$timezone_abbreviation
-utc_offset_seconds <- response$utc_offset_seconds
+# Mutate daily_data in to own columns: snowfall, rain and temperature
+params_tibble <- params_tibble %>%
+  mutate(
+    snowfall_sum = map(daily_data, "snowfall_sum"),
+    rain_sum = map(daily_data, "rain_sum"),
+    temperature_2m_max = map(daily_data, "temperature_2m_max")
+  ) %>%
+  unnest(c(snowfall_sum, rain_sum, temperature_2m_max))
 
-cat("Coordinates:", coordinates, "\n")
-cat("Elevation:", elevation, "m asl\n")
-cat("Timezone:", timezone, timezone_abbreviation, "\n")
-cat("Timezone difference to GMT+0:", utc_offset_seconds, "s\n")
 
-# Process hourly data
-hourly <- response$hourly
-time <- as.POSIXct(hourly$time, origin = "1970-01-01", tz = "UTC")
-temperature_2m <- hourly$temperature_2m
+# As these upper values are in own columns the column "daily" can be removed
 
-# Create hourly data frame
-hourly_dataframe <- data.frame(
-  date = seq(
-    from = min(time),
-    to = max(time) - lubridate::seconds(diff(time)[1]),
-    by = paste0(diff(time)[1], " secs")
-  ),
-  temperature_2m = temperature_2m
-)
+params_tibble <- params_tibble %>% 
+  select(- daily)
+# this was successful
 
-# Print the resulting data frame
-print(hourly_dataframe)
+
+# For having a better overview on my data frame I'll add °N, °E, °C, mm and cm
+coordinates <- paste0(params_tibble$latitude, "°N ", params_tibble$longitude, "°E")
+
+grad_celsius <- paste0(params_tibble$temperature_2m_max, "°C")
+
+mm <- paste0(params_tibble$rain_sum, "mm")
+
+cm <- paste0(params_tibble$snowfall_sum, "cm")
+
+
+
+
 
 
 
