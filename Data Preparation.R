@@ -122,31 +122,49 @@ params_tibble <- api_responses %>%
   )
 
 
-# Mutate daily_data in to own columns: snowfall, rain and temperature
-params_tibble <- params_tibble %>%
+# Mutate daily_data in to own columns: snowfall, rain and temperature and date
+prepared_data <- params_tibble %>%
+  rowwise() %>%  # Handle row-wise list processing
   mutate(
-    snowfall_sum = map(daily_data, "snowfall_sum"),
-    rain_sum = map(daily_data, "rain_sum"),
-    temperature_2m_max = map(daily_data, "temperature_2m_max")
+    flat_data = list(
+      tibble(
+        dates = unlist(daily_data$time),
+        snowfall_sum_flat = unlist(daily_data$snowfall_sum),
+        rain_sum_flat = unlist(daily_data$rain_sum),
+        temperature_2m_max_flat = unlist(daily_data$temperature_2m_max)
+      )
+    )
   ) %>%
-  unnest(c(snowfall_sum, rain_sum, temperature_2m_max))
+  unnest(flat_data) %>%
+  ungroup()
 
 
-# As these upper values are in own columns the column "daily" can be removed
+# As these upper values are in own columns unnecessary columns can be removed:
 
-params_tibble <- params_tibble %>% 
-  select(- daily)
+prepared_data <- prepared_data %>% 
+  select(#-start_date, 
+         #-end_date, 
+         #-response,
+         -daily)
 # this was successful
+
+# When checking the structure of my data frame I saw that dates is still character
+str(prepared_data)
+
+# So I mutate it to date
+
+prepared_data <- prepared_data %>%
+  mutate(dates = as.Date(dates, format = "%Y-%m-%d"))
 
 
 # For having a better overview on my data frame I'll add °N, °E, °C, mm and cm
-coordinates <- paste0(params_tibble$latitude, "°N ", params_tibble$longitude, "°E")
+coordinates <- paste0(prepared_data$latitude, "°N ", prepared_data$longitude, "°E")
 
-grad_celsius <- paste0(params_tibble$temperature_2m_max, "°C")
+grad_celsius <- paste0(prepared_data$temperature_2m_max_flat, "°C")
 
-mm <- paste0(params_tibble$rain_sum, "mm")
+mm <- paste0(prepared_data$rain_sum_flat, "mm")
 
-cm <- paste0(params_tibble$snowfall_sum, "cm")
+cm <- paste0(prepared_data$snowfall_sum_flat, "cm")
 
 
 
