@@ -19,9 +19,6 @@ library(tibble)
 library(tidyr)
 
 
-# leaflet für interaktive maps
-# ggmap
-
 # Prepare the data ------------------------------------------------------------
 
 
@@ -142,9 +139,9 @@ prepared_data <- params_tibble %>%
 # As these upper values are in own columns unnecessary columns can be removed:
 
 prepared_data <- prepared_data %>% 
-  select(#-start_date, 
-         #-end_date, 
-         #-response,
+  select(-start_date, 
+         -end_date, 
+         -response,
          -daily)
 # this was successful
 

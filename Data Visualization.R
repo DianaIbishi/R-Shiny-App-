@@ -86,7 +86,8 @@ server <- function(input, output) {
       clicked_date <- event_data$x
       clicked_value <- event_data$y
       
-      paste("You clicked on:", clicked_date, "with a value of", clicked_value, metric_labels[[input$variable]])
+      paste("You clicked on:", clicked_date, "with a value of", 
+            clicked_value, metric_labels[[input$variable]])
     } else {
       "Click on a point to see the value."
     }
@@ -98,10 +99,10 @@ shinyApp(ui = ui, server = server)
 
 
 
+# Save as URL ------------------------------------------------------------------
 
-
-
-
+install.packages('rsconnect')
+library(rsconnect)
 
 
 
