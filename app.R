@@ -1,10 +1,6 @@
 # Install Packages -------------------------------------------------------------
 
 library(shiny)
-library(ggplot2)
-library(leaflet)
-library(dplyr)
-library(plotly)
 
 
 # Create the app ---------------------------------------------------------------

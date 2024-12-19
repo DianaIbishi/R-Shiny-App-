@@ -104,6 +104,10 @@ shinyApp(ui = ui, server = server)
 install.packages('rsconnect')
 library(rsconnect)
 
+# My app seems to be very large
+
+rsconnect::configureApp("R-Shiny-App-Daily_Weather_Kosovo", size="small")
+
 
 
 
