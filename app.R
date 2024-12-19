@@ -22,41 +22,9 @@ library(tidyr)
 
 url <- "https://archive-api.open-meteo.com/v1/archive"
 
-latitude <- c(42.6629,
-              42.2159,
-              42.6530,
-              42.8853,
-              42.4632,
-              42.3703,
-              42.3828,
-              42.6667,
-              42.5607,
-              42.3800,
-              42.5861,
-              42.4461,
-              42.4328,
-              42.5631,
-              42.6244,
-              42.7736,
-              42.5958)
+latitude <- c(42.6629)
 
-longitude <- c(21.1655,
-               20.7420,
-               20.2883,
-               20.8675,
-               21.4699,
-               21.1553,
-               20.4283,
-               20.5000,
-               20.4377,
-               20.6167,
-               20.6261,
-               20.2989,
-               21.1653,
-               21.1408,
-               21.4672,
-               20.7561,
-               21.4011)
+longitude <- c(21.1655)
 
 start_date <- "2023-01-01"  # I actually wanted the data from 2000 until 2023.
 end_date <- "2023-12-31"    # I exceeded the API calls that's why it did not work
@@ -140,7 +108,8 @@ prepared_data <- prepared_data %>%
   select(-start_date, 
          -end_date, 
          -response,
-         -daily)
+         -daily,
+         -daily_data)
 # this was successful
 
 # When checking the structure of my data frame I saw that dates is still character
@@ -175,7 +144,7 @@ library(shinyjs)
 
 # Define UI for application
 ui <- fluidPage(
-  titlePanel("Daily Weather Trends of Kosovo"),
+  titlePanel("Daily Weather Trends of Prishtina"),
   
   sidebarLayout(
     sidebarPanel(
@@ -204,10 +173,7 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output) {
-  Sys.sleep(5)
-  observe({
-    shinyjs::show("loading")
-  })
+ 
   # Reactive subset of data based on input
   filtered_data <- reactive({
     prepared_data %>%

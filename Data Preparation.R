@@ -142,7 +142,8 @@ prepared_data <- prepared_data %>%
   select(-start_date, 
          -end_date, 
          -response,
-         -daily)
+         -daily,
+         -daily_data)
 # this was successful
 
 # When checking the structure of my data frame I saw that dates is still character
