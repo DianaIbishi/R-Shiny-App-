@@ -1,6 +1,10 @@
 
 
-# For this R-Project I aim building an interactive map with the shiny package.
+# For this R-Project I am building an interactive map with the shiny package.
+# Through a free weather API I will get the data from Kosovo 2023. My goal for this 
+# project is to create a shiny app where someone can choose a specific category like:
+# rain, snowfall and max temperature. The shiny app will be accompanied by a 
+# visualization. 
 
 
 
