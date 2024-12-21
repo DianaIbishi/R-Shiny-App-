@@ -15,6 +15,7 @@ library(dplyr)
 library(purrr)
 library(tibble)
 library(tidyr)
+library(ggplot2)
 
 
 # Prepare the data ------------------------------------------------------------
@@ -22,9 +23,23 @@ library(tidyr)
 
 url <- "https://archive-api.open-meteo.com/v1/archive"
 
-latitude <- c(42.6629)
+latitude <- c(42.6629, #Prishtina
+              42.6530, #Istog
+              42.4632, #Gjilan
+              42.8833, #Mitrovica
+              42.6744, #Peja
+              42.3800, #Gjakove
+              42.2111, #Prizren
+              42.2141 ) #Suhareka
 
-longitude <- c(21.1655)
+longitude <- c(21.1655,
+               20.2883,
+               21.4699,
+               20.8681,
+               20.2900,
+               20.4294,
+               20.7394,
+               20.4943)
 
 start_date <- "2023-01-01"  # I actually wanted the data from 2000 until 2023.
 end_date <- "2023-12-31"    # I exceeded the API calls that's why it did not work
@@ -101,6 +116,24 @@ prepared_data <- params_tibble %>%
   unnest(flat_data) %>%
   ungroup()
 
+# Mutate longitude and latitude into one column and naming the value "Prishtina"
+
+
+prepared_data <- prepared_data %>%
+  mutate(
+    city = case_when(
+      latitude == 42.6530 & longitude == 20.2883 ~ "Istog",
+      latitude == 42.6629 & longitude == 21.1655 ~ "Prishtina",
+      latitude == 42.4632 & longitude == 21.4699 ~ "Gjilan",
+      latitude == 42.8833 & longitude == 20.8681 ~ "Mitrovica",
+      latitude == 42.6744 & longitude == 20.2900 ~ "Peja",
+      latitude == 42.3800 & longitude == 20.4294 ~ "Gjakove",
+      latitude == 42.2111 & longitude == 20.7394 ~ "Prizren",
+      latitude == 42.2141 & longitude == 20.4943 ~ "Suhareka",
+      TRUE ~ "Unknown" # Optional: Handle cases where coordinates don't match
+    )
+  ) %>%
+  select(-latitude, -longitude)
 
 # As these upper values are in own columns unnecessary columns can be removed:
 
@@ -135,17 +168,17 @@ cm <- paste0(prepared_data$snowfall_sum_flat, "cm")
 # Install Packages -------------------------------------------------------------
 
 library(shiny)
-install.packages("shinyjs")
 library(shinyjs)
+library(plotly)
 
 
 # Create the app ---------------------------------------------------------------
 
+# UI ---------------------------------------------------------------------------
 
 # Define UI for application
 ui <- fluidPage(
-  titlePanel("Daily Weather Trends of Prishtina"),
-  
+  titlePanel("Daily Weather Trends of Kosovo"),
   sidebarLayout(
     sidebarPanel(
       # Dropdown to select the variable to plot
@@ -154,6 +187,11 @@ ui <- fluidPage(
                   choices = c("Rainfall (mm)" = "rain_sum_flat", 
                               "Snowfall (cm)" = "snowfall_sum_flat", 
                               "Max Temperature (°C)" = "temperature_2m_max_flat")),
+      
+      # Dropdown to select the city
+      selectInput("city", 
+                  "Select City:", 
+                  choices = unique(prepared_data$city)),
       
       # Date range input for filtering
       dateRangeInput("date_range", 
@@ -171,13 +209,17 @@ ui <- fluidPage(
   )
 )
 
+
+# Server -----------------------------------------------------------------------
 # Define server logic
 server <- function(input, output) {
  
   # Reactive subset of data based on input
   filtered_data <- reactive({
     prepared_data %>%
-      filter(dates >= input$date_range[1], dates <= input$date_range[2])
+      filter(dates >= input$date_range[1], 
+             dates <= input$date_range[2],
+             city == input$city)
   })
   
   # Define custom labels and colors for each metric
